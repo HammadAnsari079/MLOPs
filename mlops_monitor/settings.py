@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'api.apps.ApiConfig',
     'dashboard',
     'monitoring',
-    # 'channels',  # Temporarily disable channels for WebSocket support
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -75,7 +75,7 @@ TEMPLATES = [
 
 # WSGI and ASGI Applications
 WSGI_APPLICATION = 'mlops_monitor.wsgi.application'
-# ASGI_APPLICATION = 'mlops_monitor.asgi.application'  # Temporarily disable ASGI
+ASGI_APPLICATION = 'mlops_monitor.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
@@ -109,6 +109,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
+# https://docs.djangoproject.com/en/5.0/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
 
@@ -126,6 +127,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -153,15 +155,15 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
-# Channels Configuration (using Redis) - Temporarily disabled
-# CHANNEL_LAYERS = {
-#     'default': {
-#         'BACKEND': 'channels_redis.core.RedisChannelLayer',
-#         'CONFIG': {
-#             "hosts": [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')],
-#         },
-#     },
-# }
+# Channels Configuration (using Redis)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/0')],
+        },
+    },
+}
 
 # Logging configuration
 LOGGING = {
