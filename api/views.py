@@ -491,3 +491,125 @@ class FileUploadView(APIView):
                 {"error": f"File processing failed: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class BulkPredictionUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    
+    def post(self, request, model_id):
+        try:
+            # Validate model_id
+            uuid.UUID(str(model_id))
+            
+            if 'file' not in request.FILES:
+                return Response(
+                    {"error": "No file provided"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            file_obj = request.FILES['file']
+            file_extension = file_obj.name.split('.')[-1].lower()
+            
+            # Read file content
+            import pandas as pd
+            import json # Added for json.loads
+            from django.utils import timezone # Added for timezone.now
+            from .serializers import PredictionSerializer # Assuming this path
+            
+            if file_extension == 'csv':
+                df = pd.read_csv(file_obj)
+            elif file_extension in ['xlsx', 'xls']:
+                df = pd.read_excel(file_obj)
+            elif file_extension == 'json':
+                df = pd.read_json(file_obj)
+            else:
+                return Response(
+                    {"error": "Unsupported file format. Use CSV, Excel, or JSON."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Basic validation of required columns
+            # We expect at least 'prediction' or 'input_data'
+            # If 'input_data' is separate columns, we'll need to handle that
+            
+            predictions_created = 0
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    # Construct prediction object
+                    data = {
+                        'model': model_id,
+                        'timestamp': row.get('timestamp', timezone.now()),
+                        'latency_ms': row.get('latency_ms', None)
+                    }
+                    
+                    # Handle input_data
+                    if 'input_data' in row and isinstance(row['input_data'], (dict, str)):
+                        if isinstance(row['input_data'], str):
+                            try:
+                                data['input_data'] = json.loads(row['input_data'])
+                            except:
+                                data['input_data'] = {"raw": row['input_data']}
+                        else:
+                            data['input_data'] = row['input_data']
+                    else:
+                        # Assume all other columns are input features
+                        input_cols = [c for c in df.columns if c not in ['prediction', 'actual', 'timestamp', 'latency_ms', 'input_data']]
+                        data['input_data'] = row[input_cols].to_dict()
+                        
+                    # Handle prediction
+                    if 'prediction' in row:
+                        if isinstance(row['prediction'], (dict, list)):
+                            data['prediction'] = row['prediction']
+                        elif isinstance(row['prediction'], str):
+                            try:
+                                data['prediction'] = json.loads(row['prediction'])
+                            except:
+                                data['prediction'] = row['prediction']
+                        else:
+                             data['prediction'] = row['prediction']
+                    
+                    # Handle actual (ground truth)
+                    if 'actual' in row:
+                        if isinstance(row['actual'], (dict, list)):
+                            data['actual'] = row['actual']
+                        elif isinstance(row['actual'], str):
+                            try:
+                                data['actual'] = json.loads(row['actual'])
+                            except:
+                                data['actual'] = row['actual']
+                        else:
+                            data['actual'] = row['actual']
+                            
+                    serializer = PredictionSerializer(data=data)
+                    if serializer.is_valid():
+                        serializer.save()
+                        predictions_created += 1
+                    else:
+                        errors.append(f"Row {index}: {serializer.errors}")
+                        
+                except Exception as e:
+                    errors.append(f"Row {index}: {str(e)}")
+            
+            # Trigger background tasks
+            if predictions_created > 0:
+                from monitoring.tasks import calculate_metrics_task, detect_drift_task
+                calculate_metrics_task(model_id)
+                detect_drift_task(model_id)
+            
+            return Response(
+                {
+                    "message": f"Successfully processed {predictions_created} predictions",
+                    "errors": errors[:10] if errors else []  # Limit error output
+                }, 
+                status=status.HTTP_200_OK
+            )
+            
+        except ValueError:
+            return Response({'error': 'Invalid model ID format'}, status=400)
+        except Exception as e:
+            logger.error(f"Bulk prediction upload failed: {str(e)}")
+            return Response(
+                {"error": f"Upload failed: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -20,6 +20,10 @@ def calculate_psi(expected, actual, buckets=10):
     if len(expected) == 0 or len(actual) == 0:
         return 0.0
     
+    # Convert to numpy arrays
+    expected = np.array(expected)
+    actual = np.array(actual)
+    
     # Create bins
     breakpoints = np.linspace(expected.min(), expected.max(), buckets + 1)
     
@@ -50,6 +54,10 @@ def calculate_ks_test(expected, actual):
     if len(expected) == 0 or len(actual) == 0:
         return 0.0, 1.0
     
+    # Convert to numpy arrays
+    expected = np.array(expected)
+    actual = np.array(actual)
+    
     ks_statistic, p_value = stats.ks_2samp(expected, actual)
     return ks_statistic, p_value
 
@@ -60,6 +68,10 @@ def calculate_kl_divergence(expected, actual, buckets=10):
     # Handle edge case of empty arrays
     if len(expected) == 0 or len(actual) == 0:
         return 0.0
+    
+    # Convert to numpy arrays
+    expected = np.array(expected)
+    actual = np.array(actual)
     
     # Create bins
     all_values = np.concatenate([expected, actual])

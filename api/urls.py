@@ -9,6 +9,7 @@ urlpatterns = [
     # Predictions
     path('predictions/', views.PredictionCreateView.as_view(), name='prediction-create'),
     path('models/<uuid:model_id>/predictions/', views.PredictionListView.as_view(), name='prediction-list'),
+    path('models/<uuid:model_id>/bulk-predictions/', views.BulkPredictionUploadView.as_view(), name='bulk-prediction-upload'),
     
     # Metrics
     path('models/<uuid:model_id>/metrics/', views.MetricsSummaryView.as_view(), name='metrics-summary'),

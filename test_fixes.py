@@ -19,10 +19,12 @@ def test_model_creation():
     """Test that we can create a model with our fixed code"""
     try:
         from api.models import ModelRegistry
+        import uuid
         
-        # Create a test model
+        # Create a test model with unique name
+        unique_name = f"TestModel_{uuid.uuid4().hex[:8]}"
         model = ModelRegistry.objects.create(
-            name="TestModel",
+            name=unique_name,
             version="v1.0",
             description="Test model for verification"
         )
